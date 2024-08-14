@@ -22,10 +22,16 @@
 //! }
 //! ```
 
-use std::time::Duration;
-
 use bevy::{
-    asset::load_internal_binary_asset, ecs::{event::ManualEventReader, system::SystemParam}, input::keyboard::{Key, KeyboardInput}, prelude::*, render::camera::RenderTarget, text::{BreakLineOn, TextLayoutInfo}, time::common_conditions::on_timer, ui::FocusPolicy, window::{PrimaryWindow, WindowRef}
+    asset::load_internal_binary_asset,
+    ecs::{event::ManualEventReader, system::SystemParam},
+    input::keyboard::{Key, KeyboardInput},
+    prelude::*,
+    render::camera::RenderTarget,
+    text::{BreakLineOn, TextLayoutInfo},
+    time::Stopwatch,
+    ui::FocusPolicy,
+    window::{PrimaryWindow, WindowRef},
 };
 
 /// A Bevy `Plugin` providing the systems and assets required to make a [`TextInputBundle`] work.
@@ -59,8 +65,7 @@ impl Plugin for TextInputPlugin {
                     show_hide_placeholder,
                     scroll_with_cursor,
                 )
-                    .in_set(TextInputSystem)
-                    .run_if(on_timer(Duration::from_millis(16))),
+                    .in_set(TextInputSystem),
             )
             .register_type::<TextInputSettings>()
             .register_type::<TextInputTextStyle>()
@@ -344,7 +349,12 @@ fn keyboard(
     )>,
     mut submit_writer: EventWriter<TextInputSubmitEvent>,
     navigation: Res<TextInputNavigationBindings>,
+    time: Res<Time>,
+    mut stopwatch: Local<Stopwatch>,
+    mut last_pressed: Local<Option<Key>>,
 ) {
+    stopwatch.tick(time.delta());
+
     if input_reader.clone().read(&input_events).next().is_none() {
         return;
     }
@@ -368,9 +378,16 @@ fn keyboard(
         let mut submitted_value = None;
 
         for input in input_reader.clone().read(&input_events) {
-            if !input.state.is_pressed() {
+            if !input.state.is_pressed()
+                || (last_pressed.as_ref().map_or(false, |old| {
+                    *old == input.logical_key && stopwatch.elapsed().as_millis() < 50
+                }))
+            {
                 continue;
             };
+
+            stopwatch.reset();
+            *last_pressed = Some(input.logical_key.clone());
 
             let pos = cursor_pos.bypass_change_detection().0;
 
