@@ -22,15 +22,10 @@
 //! }
 //! ```
 
+use std::time::Duration;
+
 use bevy::{
-    asset::load_internal_binary_asset,
-    ecs::{event::ManualEventReader, system::SystemParam},
-    input::keyboard::{Key, KeyboardInput},
-    prelude::*,
-    render::camera::RenderTarget,
-    text::{BreakLineOn, TextLayoutInfo},
-    ui::FocusPolicy,
-    window::{PrimaryWindow, WindowRef},
+    asset::load_internal_binary_asset, ecs::{event::ManualEventReader, system::SystemParam}, input::keyboard::{Key, KeyboardInput}, prelude::*, render::camera::RenderTarget, text::{BreakLineOn, TextLayoutInfo}, time::common_conditions::on_timer, ui::FocusPolicy, window::{PrimaryWindow, WindowRef}
 };
 
 /// A Bevy `Plugin` providing the systems and assets required to make a [`TextInputBundle`] work.
@@ -64,7 +59,8 @@ impl Plugin for TextInputPlugin {
                     show_hide_placeholder,
                     scroll_with_cursor,
                 )
-                    .in_set(TextInputSystem),
+                    .in_set(TextInputSystem)
+                    .run_if(on_timer(Duration::from_millis(16))),
             )
             .register_type::<TextInputSettings>()
             .register_type::<TextInputTextStyle>()
